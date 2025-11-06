@@ -38,25 +38,28 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/health/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
-                
+
+                // Allow GET requests to /api/donors for public access
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/donors/**").permitAll()
+
                 // OPTIONS requests should be permitted for CORS preflight
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                
+
                 // Admin-only endpoints
                 .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/blood-donations/pending").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/blood-requests/pending").hasAuthority("ROLE_ADMIN") 
+                .requestMatchers("/api/blood-requests/pending").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/blood-donations/*/approve").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/blood-donations/*/reject").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/blood-requests/*/approve").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/blood-requests/*/reject").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/blood-inventory/update").hasAuthority("ROLE_ADMIN")
-                
+
                 // User or admin can access
                 .requestMatchers("/api/donation-appointments").hasAnyAuthority("ROLE_ADMIN", "ROLE_USER")
                 .requestMatchers("/api/blood-inventory").permitAll()
                 .requestMatchers("/api/blood-inventory/stock").permitAll()
-                
+
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
@@ -66,52 +69,55 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             );
-        
+
+        // Add JWT filter before username-password authentication filter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // For development, allow all origins
+
+        // For development: allow all origins
         configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-        
+
         // Allow all necessary HTTP methods
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
-        
+        configuration.setAllowedMethods(Arrays.asList(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"
+        ));
+
         // Allow all headers requested by the client
         configuration.setAllowedHeaders(Arrays.asList(
-            "Authorization", 
-            "Content-Type", 
-            "X-Requested-With", 
-            "Accept", 
-            "Origin", 
-            "Access-Control-Request-Method", 
+            "Authorization",
+            "Content-Type",
+            "X-Requested-With",
+            "Accept",
+            "Origin",
+            "Access-Control-Request-Method",
             "Access-Control-Request-Headers",
             "Cache-Control"
         ));
-        
+
         // Expose headers to the client
         configuration.setExposedHeaders(Arrays.asList(
-            "Authorization", 
-            "Content-Type", 
+            "Authorization",
+            "Content-Type",
             "Access-Control-Allow-Origin",
             "Access-Control-Allow-Credentials",
             "Cache-Control"
         ));
-        
-        // Important: maxAge determines how long the preflight response can be cached
+
+        // Cache preflight response for 1 hour
         configuration.setMaxAge(3600L);
-        
-        // Allow cookies and authentication
+
+        // Allow cookies and authentication headers
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        
+
         return source;
     }
 }
